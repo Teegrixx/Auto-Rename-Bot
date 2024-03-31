@@ -149,44 +149,9 @@ async def auto_rename_files(client, message, file_id, file_name, media_type):
         if ph_path:
             os.remove(ph_path)
 
-@Client.on_message(filters.private & (filters.document | filters.video | filters.audio))
-async def handle_files(client, message):
-    user_id = message.from_user.id
-    file_id = None
-    file_name = None
-    media_type = None
-
-    if message.document:
-        file_id = message.document.file_id
-        file_name = message.document.file_name
-        media_type = "document"
-    elif message.video:
-        file_id = message.video.file_id
-        file_name = f"{message.video.file_name}.mp4"
-        media_type = "video"
-    elif message.audio:
-        file_id = message.audio.file_id
-        file_name = f"{message.audio.file_name}.mp3"
-        media_type = "audio"
-
-    print(f"Received File: {file_name}")
-
-    if file_id in renaming_operations:
-        elapsed_time = (datetime.now() - renaming_operations[file_id]).seconds
-        if elapsed_time < 10:
-            print("File is being ignored as it is currently being renamed or was renamed recently.")
-            return
-
-    renaming_operations[file_id] = datetime.now()
-
-    episode_number = extract_episode_number(file_name)
-
-    if episode_number:
-        await auto_rename_files(client, message, file_id, file_name, media_type)
     else:
         reply_msg = await message.reply_text("This file doesn't contain an episode number. Please reply with the desired new name.", reply_markup=ForceReply(True))
         renaming_operations.pop(file_id, None)
-
 # Jishu Developer 
 # Don't Remove Credit 🥺
 # Telegram Channel @Madflix_Bots
