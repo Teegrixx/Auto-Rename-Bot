@@ -119,14 +119,13 @@ async def auto_rename_files(client, message):
 
     logger.info(f"Original File Name: {original_file_name}")
 
-    # Check if the message has a message_id attribute
-    if hasattr(message, 'message_id') and message.message_id in renaming_operations:
+    if message.message_id in renaming_operations:
         elapsed_time = (datetime.now() - renaming_operations[message.message_id]).seconds
         if elapsed_time < 10:
             logger.info("File is being ignored as it is currently being renamed or was renamed recently.")
             return
 
-    renaming_operations[message.message_id] = datetime.now() if hasattr(message, 'message_id') else None
+    renaming_operations[message.message_id] = datetime.now()
 
     episode_number, qualities = extract_information(original_file_name)
 
@@ -135,7 +134,7 @@ async def auto_rename_files(client, message):
 
     if not episode_number:
         await message.reply_text("Unable to extract episode number.")
-        del renaming_operations[getattr(message, 'message_id', None)]  # Remove the message_id from renaming_operations if it exists
+        del renaming_operations[message.message_id]
         return
 
     new_file_name = format_template.replace("{episode}", str(episode_number))
@@ -148,7 +147,7 @@ async def auto_rename_files(client, message):
 
     download_msg = await message.reply_text(text="Trying To Download.....")
     if not await download_file(client, message, file_path, download_msg):
-        del renaming_operations[getattr(message, 'message_id', None)]  # Remove the message_id from renaming_operations if it exists
+        del renaming_operations[message.message_id]
         await download_msg.edit("Error downloading file.")
         return
 
@@ -183,7 +182,7 @@ async def auto_rename_files(client, message):
         os.remove(file_path)
         if ph_path:
             os.remove(ph_path)
-        del renaming_operations[getattr(message, 'message_id', None)]  # Remove the message_id from renaming_operations if it exists
+        del renaming_operations[message.message_id]
         await upload_msg.edit("Error uploading file.")
         return
 
@@ -192,8 +191,7 @@ async def auto_rename_files(client, message):
     if ph_path:
         os.remove(ph_path)
 
-    del renaming_operations[getattr(message, 'message_id', None)]  # Remove the message_id from renaming_operations if it exists
-
+    del renaming_operations[message.message_id]
 
 
 
