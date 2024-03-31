@@ -5,6 +5,7 @@ from pyrogram.raw.all import layer
 from config import Config
 from aiohttp import web
 from route import web_server
+import aiofiles
 
 class Bot(Client):
 
@@ -41,12 +42,53 @@ class Bot(Client):
                 await self.send_message(Config.LOG_CHANNEL, f"**{me.mention} Is Restarted !!**\n\n📅 Date : `{date}`\n⏰ Time : `{time}`\n🌐 Timezone : `Asia/Kolkata`\n\n🉐 Version : `v{__version__} (Layer {layer})`</b>")                                
             except:
                 print("Please Make This Is Admin In Your Log Channel")
+    
+    async def download_file(self, message, file_path, progress_msg):
+        try:
+            async with aiofiles.open(file_path, "wb") as file:
+                await self.download_media(
+                    message=message,
+                    file=file,
+                    progress=progress_for_pyrogram,
+                    progress_args=("Download Started....", progress_msg, time.time())
+                )
+            return True
+        except Exception as e:
+            logger.error(f"Error downloading file: {e}")
+            return False
+
+    async def upload_file(self, chat_id, file_path, caption, media_type, duration, progress_msg):
+        try:
+            async with aiofiles.open(file_path, "rb") as file:
+                if media_type == "document":
+                    await self.send_document(
+                        chat_id,
+                        document=file,
+                        caption=caption,
+                        progress=progress_for_pyrogram,
+                        progress_args=("Upload Started.....", progress_msg, time.time())
+                    )
+                elif media_type == "video":
+                    await self.send_video(
+                        chat_id,
+                        video=file,
+                        caption=caption,
+                        duration=duration,
+                        progress=progress_for_pyrogram,
+                        progress_args=("Upload Started.....", progress_msg, time.time())
+                    )
+                elif media_type == "audio":
+                    await self.send_audio(
+                        chat_id,
+                        audio=file,
+                        caption=caption,
+                        duration=duration,
+                        progress=progress_for_pyrogram,
+                        progress_args=("Upload Started.....", progress_msg, time.time())
+                    )
+        except Exception as e:
+            logger.error(f"Error uploading file: {e}")
+            return False
+        return True
 
 Bot().run()
-
-
-
-# Jishu Developer 
-# Don't Remove Credit 🥺
-# Telegram Channel @Madflix_Bots
-# Developer @JishuDeveloper
