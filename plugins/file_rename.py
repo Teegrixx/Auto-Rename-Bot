@@ -119,7 +119,7 @@ async def auto_rename_files(client, message):
 
     logger.info(f"Original File Name: {original_file_name}")
 
-    if message in renaming_operations:
+    if message.message_id in renaming_operations:
         elapsed_time = (datetime.now() - renaming_operations[message.message_id]).seconds
         if elapsed_time < 10:
             logger.info("File is being ignored as it is currently being renamed or was renamed recently.")
