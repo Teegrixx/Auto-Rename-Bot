@@ -1,15 +1,10 @@
 from pyrogram import Client, filters
-from pyrogram.errors import FloodWait
-from pyrogram.types import InputMediaDocument, Message 
-from PIL import Image
+from pyrogram.types import Message
 from datetime import datetime
-from hachoir.metadata import extractMetadata
-from hachoir.parser import createParser
-from helper.utils import progress_for_pyrogram, humanbytes, convert
 from helper.database import madflixbotz
+from helper.utils import progress_for_pyrogram, humanbytes, convert
 from config import Config
 import os
-import time
 import re
 
 renaming_operations = {}
@@ -48,7 +43,6 @@ def extract_quality(filename):
             return match.group(0)  # Extracted quality
     return "Unknown"
 
-# Function to auto-rename files based on episode numbers
 async def auto_rename_files(client, message, file_id, file_name, media_type):
     user_id = message.from_user.id
     format_template = await madflixbotz.get_format_template(user_id)
@@ -155,7 +149,6 @@ async def auto_rename_files(client, message, file_id, file_name, media_type):
         if ph_path:
             os.remove(ph_path)
 
-# Inside the handler for file uploads
 @Client.on_message(filters.private & (filters.document | filters.video | filters.audio))
 async def handle_files(client, message):
     user_id = message.from_user.id
@@ -192,9 +185,9 @@ async def handle_files(client, message):
         await auto_rename_files(client, message, file_id, file_name, media_type)
     else:
         # Prompt user to input episode number manually or provide option to skip renaming
-        await message.reply_text("This file doesn't contain an episode number. Please input the episode number manually or skip renaming.")
+        await message.reply_text("This file doesn't contain an episode number. Please reply with the desired new name.")
         # Implement logic to handle manual renaming or skipping
-        
+
 # Jishu Developer 
 # Don't Remove Credit 🥺
 # Telegram Channel @Madflix_Bots
