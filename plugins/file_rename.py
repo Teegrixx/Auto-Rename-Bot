@@ -131,161 +131,85 @@ def extract_episode_number(filename):
     return None
 
 # Example Usage:
-filename = "Naruto Shippuden S01 - EP07 - 1080p [Dual Audio] @Madflix_Bots.mkv"
+filename = "Naruto Shippuden S01 - EP07 - 1080p [Dual Audio] @teegrixx.mkv"
 episode_number = extract_episode_number(filename)
 print(f"Extracted Episode Number: {episode_number}")
 
 # Inside the handler for file uploads
 @Client.on_message(filters.private & (filters.document | filters.video | filters.audio))
+async def download_file(session, url, file_path, progress_callback):
+    async with session.get(url) as response:
+        if response.status == 200:
+            with open(file_path, 'wb') as f:
+                content_length = int(response.headers.get('content-length')) if 'content-length' in response.headers else None
+                downloaded_bytes = 0
+                async for chunk in response.content.iter_any():
+                    f.write(chunk)
+                    downloaded_bytes += len(chunk)
+                    if progress_callback:
+                        await progress_callback(downloaded_bytes, content_length)
+            return True
+        else:
+            print(f"Failed to download {url}: {response.status}")
+            return False
+
+async def upload_file(session, file_path, destination_url, progress_callback):
+    data = aiohttp.FormData()
+    data.add_field('file', open(file_path, 'rb'))
+    async with session.post(destination_url, data=data) as response:
+        if response.status == 200:
+            print(f"File uploaded successfully to {destination_url}")
+        else:
+            print(f"Failed to upload {file_path} to {destination_url}: {response.status}")
+
+async def process_file(session, url, destination_url, progress_callback):
+    file_name = os.path.basename(url)
+    download_success = await download_file(session, url, file_name, progress_callback)
+    if download_success:
+        await upload_file(session, file_name, destination_url, progress_callback)
+        os.remove(file_name)
+
 async def auto_rename_files(client, message):
-    user_id = message.from_user.id
-    firstname = message.from_user.first_name
-    format_template = await madflixbotz.get_format_template(user_id)
-    media_preference = await madflixbotz.get_media_preference(user_id)
+    # Your existing code...
 
-    if not format_template:
-        return await message.reply_text("Please Set An Auto Rename Format First Using /autorename")
-
-    # Extract information from the incoming file name
-    if message.document:
-        file_id = message.document.file_id
-        file_name = message.document.file_name
-        media_type = media_preference or "document"  # Use preferred media type or default to document
-    elif message.video:
-        file_id = message.video.file_id
-        file_name = f"{message.video.file_name}.mp4"
-        media_type = media_preference or "video"  # Use preferred media type or default to video
-    elif message.audio:
-        file_id = message.audio.file_id
-        file_name = f"{message.audio.file_name}.mp3"
-        media_type = media_preference or "audio"  # Use preferred media type or default to audio
-    else:
-        return await message.reply_text("Unsupported File Type")
-
-    print(f"Original File Name: {file_name}")
-    
-    
-
-# Check whether the file is already being renamed or has been renamed recently
-    if file_id in renaming_operations:
-        elapsed_time = (datetime.now() - renaming_operations[file_id]).seconds
-        if elapsed_time < 10:
-            print("File is being ignored as it is currently being renamed or was renamed recently.")
-            return  # Exit the handler if the file is being ignored
-
-    # Mark the file as currently being renamed
-    renaming_operations[file_id] = datetime.now()
-
-    # Extract episode number and qualities
-    episode_number = extract_episode_number(file_name)
-    
-    print(f"Extracted Episode Number: {episode_number}")
-    
-    if episode_number:
-        placeholders = ["episode", "Episode", "EPISODE", "{episode}"]
-        for placeholder in placeholders:
-            format_template = format_template.replace(placeholder, str(episode_number), 1)
-            
-        # Add extracted qualities to the format template
-        quality_placeholders = ["quality", "Quality", "QUALITY", "{quality}"]
-        for quality_placeholder in quality_placeholders:
-            if quality_placeholder in format_template:
-                extracted_qualities = extract_quality(file_name)
-                if extracted_qualities == "Unknown":
-                    await message.reply_text("I Was Not Able To Extract The Quality Properly. Renaming As 'Unknown'...")
-                    # Mark the file as ignored
-                    del renaming_operations[file_id]
-                    return  # Exit the handler if quality extraction fails
-                
-                format_template = format_template.replace(quality_placeholder, "".join(extracted_qualities))           
-            
-        _, file_extension = os.path.splitext(file_name)
-        new_file_name = f"{format_template}{file_extension}"
-        file_path = f"downloads/{new_file_name}"
-        file = message
-
+    async with aiohttp.ClientSession() as session:
         download_msg = await message.reply_text(text="Trying To Download.....")
-        try:
-            path = await client.download_media(message=file, file_name=file_path, progress=progress_for_pyrogram, progress_args=("Download Started....", download_msg, time.time()))
-        except Exception as e:
-            # Mark the file as ignored
-            del renaming_operations[file_id]
-            return await download_msg.edit(e)     
 
-        duration = 0
+        async def download_progress_callback(downloaded_bytes, total_bytes):
+            if total_bytes:
+                progress_percentage = int((downloaded_bytes / total_bytes) * 100)
+                await download_msg.edit(f"Download Progress: {progress_percentage}%")
+
         try:
-            metadata = extractMetadata(createParser(file_path))
-            if metadata.has("duration"):
-                duration = metadata.get('duration').seconds
+            await asyncio.create_task(
+                download_file(session, file_url, file_path, download_progress_callback)
+            )
         except Exception as e:
-            print(f"Error getting duration: {e}")
+            del renaming_operations[file_id]
+            return await download_msg.edit(f"Error downloading file: {e}")
 
         upload_msg = await download_msg.edit("Trying To Uploading.....")
-        ph_path = None
-        c_caption = await madflixbotz.get_caption(message.chat.id)
-        c_thumb = await madflixbotz.get_thumbnail(message.chat.id)
-
-        caption = c_caption.format(filename=new_file_name, filesize=humanbytes(message.document.file_size), duration=convert(duration)) if c_caption else f"**{new_file_name}**"
-
-        if c_thumb:
-            ph_path = await client.download_media(c_thumb)
-            print(f"Thumbnail downloaded successfully. Path: {ph_path}")
-        elif media_type == "video" and message.video.thumbs:
-            ph_path = await client.download_media(message.video.thumbs[0].file_id)
-
-        if ph_path:
-            Image.open(ph_path).convert("RGB").save(ph_path)
-            img = Image.open(ph_path)
-            img.resize((320, 320))
-            img.save(ph_path, "JPEG")    
         
+        async def upload_progress_callback(transferred_bytes, total_bytes):
+            if total_bytes:
+                progress_percentage = int((transferred_bytes / total_bytes) * 100)
+                await upload_msg.edit(f"Upload Progress: {progress_percentage}%")
 
         try:
-            type = media_type  # Use 'media_type' variable instead
-            if type == "document":
-                await client.send_document(
-                    message.chat.id,
-                    document=file_path,
-                    thumb=ph_path,
-                    caption=caption,
-                    progress=progress_for_pyrogram,
-                    progress_args=("Upload Started.....", upload_msg, time.time())
-                )
-            elif type == "video":
-                await client.send_video(
-                    message.chat.id,
-                    video=file_path,
-                    caption=caption,
-                    thumb=ph_path,
-                    duration=duration,
-                    progress=progress_for_pyrogram,
-                    progress_args=("Upload Started.....", upload_msg, time.time())
-                )
-            elif type == "audio":
-                await client.send_audio(
-                    message.chat.id,
-                    audio=file_path,
-                    caption=caption,
-                    thumb=ph_path,
-                    duration=duration,
-                    progress=progress_for_pyrogram,
-                    progress_args=("Upload Started.....", upload_msg, time.time())
-                )
+            await asyncio.create_task(
+                upload_file(session, file_path, upload_url, upload_progress_callback)
+            )
         except Exception as e:
             os.remove(file_path)
-            if ph_path:
-                os.remove(ph_path)
             # Mark the file as ignored
-            return await upload_msg.edit(f"Error: {e}")
+            del renaming_operations[file_id]
+            return await upload_msg.edit(f"Error uploading file: {e}")
 
-        await download_msg.delete() 
-        os.remove(file_path)
-        if ph_path:
-            os.remove(ph_path)
+        await download_msg.delete()
+        await upload_msg.delete()
 
-# Remove the entry from renaming_operations after successful renaming
+        # Remove the entry from renaming_operations after successful renaming
         del renaming_operations[file_id]
-
 
 
 
