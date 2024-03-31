@@ -1,5 +1,5 @@
 from pyrogram import Client, filters
-from pyrogram.types import ForceReply
+from pyrogram.types import Messsage, ForceReply
 from helper.database import madflixbotz
 from datetime import datetime
 from PIL import Image
