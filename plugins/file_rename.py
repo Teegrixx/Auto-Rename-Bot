@@ -186,9 +186,10 @@ async def handle_files(client, message):
     else:
         # Prompt user to input episode number manually or provide option to skip renaming
         await message.reply_text("This file doesn't contain an episode number. Please reply with the desired new name.")
-        # Implement logic to handle manual renaming or skipping
+        renaming_operations.pop(file_id, None)
 
 # Jishu Developer 
 # Don't Remove Credit 🥺
 # Telegram Channel @Madflix_Bots
 # Developer @JishuDeveloper
+
