@@ -1,13 +1,10 @@
 from pyrogram import Client, filters
-from pyrogram.types import Message, ForceReply
-from helper.database import madflixbotz
+from pyrogram.types import Message, ForceReply  # Import ForceReply
 from datetime import datetime
-from PIL import Image
-from hachoir.metadata import extractMetadata
-from hachoir.parser import createParser
+from helper.database import madflixbotz
 from helper.utils import progress_for_pyrogram, humanbytes, convert
+from config import Config
 import os
-import time
 import re
 
 renaming_operations = {}
@@ -46,17 +43,13 @@ def extract_quality(filename):
             return match.group(0)  # Extracted quality
     return "Unknown"
 
-# Function to auto-rename files based on episode numbers
-async def auto_rename_files(client, message, file_id, file_name, media_type, new_name=None):
+async def auto_rename_files(client, message, file_id, file_name, media_type):
     user_id = message.from_user.id
     format_template = await madflixbotz.get_format_template(user_id)
     media_preference = await madflixbotz.get_media_preference(user_id)
 
     if not format_template:
         return await message.reply_text("Please Set An Auto Rename Format First Using /autorename")
-
-    if new_name:
-        file_name = new_name
 
     # Extract episode number and qualities
     episode_number = extract_episode_number(file_name)
@@ -156,7 +149,6 @@ async def auto_rename_files(client, message, file_id, file_name, media_type, new
         if ph_path:
             os.remove(ph_path)
 
-# Inside the handler for file uploads
 @Client.on_message(filters.private & (filters.document | filters.video | filters.audio))
 async def handle_files(client, message):
     user_id = message.from_user.id
@@ -192,26 +184,10 @@ async def handle_files(client, message):
     if episode_number:
         await auto_rename_files(client, message, file_id, file_name, media_type)
     else:
-        # Prompt user to input episode number manually or provide option to skip renaming
         reply_msg = await message.reply_text("This file doesn't contain an episode number. Please reply with the desired new name.", reply_markup=ForceReply(True))
-        # Save the message ID for future reference
-        renaming_operations[file_id] = {"message_id": reply_msg.message_id, "media_type": media_type}
+        renaming_operations.pop(file_id, None)
 
-# Inside the handler for user replies
-@Client.on_message(filters.private & filters.reply & filters.text)
-async def handle_reply(client, message):
-    user_id = message.from_user.id
-    replied_message = message.reply_to_message
-
-    if user_id in renaming_operations and replied_message:
-        reply_to_message_id = replied_message.message_id
-        file_info = renaming_operations[user_id]
-
-        if file_info["message_id"] == reply_to_message_id:
-            # The user replied to the correct message
-            file_id = user_id
-            file_name = replied_message.text
-            media_type = file_info["media_type"]
-            await auto_rename_files(client, message, file_id, file_name, media_type, new_name=file_name)
-            # Remove the entry from the renaming_operations dictionary
-            del renaming_operations[user_id]
+# Jishu Developer 
+# Don't Remove Credit 🥺
+# Telegram Channel @Madflix_Bots
+# Developer @JishuDeveloper
