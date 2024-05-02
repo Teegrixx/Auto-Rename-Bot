@@ -27,8 +27,9 @@ class Bot(Client):
             self.username = me.username  
             self.uptime = Config.BOT_UPTIME     
             if Config.WEBHOOK:
-                app = web.AppRunner(await web_server())
+                app = web.AppRunner()
                 await app.setup()       
+                app.add_routes(web_server())  # Add routes to the app
                 await web.TCPSite(app, "0.0.0.0", 8080).start()     
             print(f"{me.first_name} Is Started.....✨️")
             for id in Config.ADMIN:
@@ -48,3 +49,4 @@ class Bot(Client):
 
 if __name__ == "__main__":
     Bot().run()
+ 
