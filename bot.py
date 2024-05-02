@@ -28,7 +28,7 @@ class Bot(Client):
             self.uptime = Config.BOT_UPTIME     
             if Config.WEBHOOK:
                 app = web.Application()
-                app.add_routes(web_server())  # Add routes to the app
+                app.add_routes(await web_server())  # Add routes to the app
                 app_runner = web.AppRunner(app)
                 await app_runner.setup()
                 await web.TCPSite(app_runner, "0.0.0.0", 8080).start()     
